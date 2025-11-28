@@ -285,7 +285,8 @@ def try_insertion_global(uav_list, target_uav_id, iot_id, gb_id, iot_objs, gb_ob
         g_wp = point_on_line_at_distance_from_target(i_wp, gb_map[gb_id].pos, R_G)
         cand2 = copy.deepcopy(orig)
         cand2.insert(i_pos, ('iot', iot_id, i_wp))
-        cand2.insert(i_pos + 1, ('gb', gb_id, g_wp))
+        if dist(i_wp, g_wp) < 3 * R_GBS:
+            cand2.insert(i_pos + 1, ('gb', gb_id, g_wp))
         cand2 = clean_path_remove_consecutive_gbs(cand2, target)
 
         candidates = [cand1, cand2]
@@ -489,43 +490,164 @@ def plot_solution(iot_list, gb_list, uav_list, title="Greedy multi-UAV with rang
 # ----------------------------
 # Run example
 # ----------------------------
+import datetime
+import csv
+import time
+
+# --------------------------------------------
+# Multi-seed experiment driver
+# --------------------------------------------
+def run_multi_seed_experiment(
+    seeds_list,
+    num_iot=NUM_IOT,
+    num_gbs=NUM_GBS,
+    num_uavs=NUM_UAV,
+    area=AREA_SIZE
+):
+    results = []
+
+    for s in seeds_list:
+        print("\n==============================")
+        print(f" Running Experiment - Seed {s}")
+        print("==============================")
+
+        # Build scenario
+        iot_objs, gb_objs, uav_list = build_random_scenario(
+            num_iot=num_iot, num_gbs=num_gbs, num_uavs=num_uavs,
+            area=area, seed=s
+        )
+
+        # Greedy solution
+        t0 = time.time()
+        uavs_res = greedy_multi_uav_with_ranges(uav_list, iot_objs, gb_objs, seed=s)
+        elapsed = time.time() - t0
+
+        # Evaluate performance
+        _, V_U_glob, per_uav_lengths, _, _ = evaluate_all_uavs(
+            uavs_res, iot_objs, gb_objs
+        )
+
+        aoi_dict, peak, avg, coverage = compute_aoi_from_VU(V_U_glob, iot_objs)
+
+        # --------------------------
+        # Console print (requested)
+        # --------------------------
+        print("\nIndividual AoIs (None means not collected):")
+        t_gen_map = {}
+        for iid in sorted(aoi_dict.keys()):
+            t_gen = next(i.t_gen for i in iot_objs if i.id == iid)
+            t_gen_map[iid] = t_gen
+            print(f" IoT {iid}: AoI = {aoi_dict[iid]} (t_gen={t_gen})")
+
+        # --------------------------
+        # Plot network result
+        # --------------------------
+        #plot_solution(iot_objs, gb_objs, uavs_res,
+                      #title=f"Greedy multi-UAV Solution | Seed {s}")
+
+        # Metrics
+        unserved = sum(1 for v in aoi_dict.values() if v is None)
+        total_dist = sum(per_uav_lengths.values())
+
+        results.append({
+            "seed": s,
+            "peak_aoi": peak,
+            "avg_aoi": avg,
+            "coverage": coverage,
+            "total_dist": total_dist,
+            "unserved": unserved,
+            "runtime_sec": elapsed,
+            "aoi_dict": aoi_dict,
+            "t_gen_map": t_gen_map
+        })
+
+        print(f"[Seed {s}] Peak={peak}, Avg={avg:.2f}, Cov={coverage:.2f}, "
+              f"Dist={total_dist:.1f}, Unserved={unserved}")
+
+    return results
+
+
+# --------------------------------------------
+# Statistics over all seeds
+# --------------------------------------------
+def compute_final_stats(results):
+    def avg(field):
+        vals = [r[field] for r in results if r[field] is not None]
+        return sum(vals) / len(vals) if vals else None
+
+    final = {
+        "avg_peak_aoi": avg("peak_aoi"),
+        "avg_avg_aoi": avg("avg_aoi"),
+        "avg_coverage": avg("coverage"),
+        "avg_total_dist": avg("total_dist"),
+        "avg_unserved": avg("unserved"),
+        "avg_runtime": avg("runtime_sec"),
+    }
+    return final
+
+
+# --------------------------------------------
+# Save results to CSV with detailed AOI logs
+# --------------------------------------------
+def save_results_csv(results, final_stats, num_iot, num_uavs, num_gbs):
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"multi_seed_results_{timestamp}.csv"
+
+    with open(filename, "w", newline="") as f:
+        writer = csv.writer(f)
+
+        # Top: scenario general info
+        writer.writerow(["Scenario Information"])
+        writer.writerow(["Number of IoT Nodes", num_iot])
+        writer.writerow(["Number of UAVs", num_uavs])
+        writer.writerow(["Number of Ground BS", num_gbs])
+        writer.writerow([])
+
+        # Per-seed performance header
+        writer.writerow([
+            "Seed", "Peak AOI", "Avg AOI", "Coverage",
+            "Total Distance", "Unserved IoT", "Runtime (s)"
+        ])
+
+        # Write each seed block
+        for r in results:
+            writer.writerow([
+                r["seed"], r["peak_aoi"], r["avg_aoi"], r["coverage"],
+                r["total_dist"], r["unserved"], r["runtime_sec"]
+            ])
+
+            # IoT-level AoI detail
+            writer.writerow(["Individual AoIs for Seed", r["seed"]])
+            for iid in sorted(r["aoi_dict"].keys()):
+                writer.writerow([
+                    f"IoT {iid}",
+                    r["aoi_dict"][iid],
+                    f"t_gen={r['t_gen_map'][iid]}"
+                ])
+            writer.writerow([])
+
+        # Final aggregated metrics
+        writer.writerow(["Final Averages"])
+        for k, v in final_stats.items():
+            writer.writerow([k, v])
+
+    print(f"\n📁 Detailed results saved to: {filename}")
+
+
+# --------------------------------------------
+# Run Experiment (MAIN)
+# --------------------------------------------
 if __name__ == "__main__":
-    # Build scenario
-    iot_objs, gb_objs, uav_list = build_random_scenario(num_iot=NUM_IOT, num_gbs=NUM_GBS, num_uavs=NUM_UAV, seed=SEED)
+    seeds = [42,50,55,60,65,85,90,105,49,110]  # Edit if needed
 
-    t0 = time.time()
-    # Run greedy heuristic with ranges
-    uavs_res = greedy_multi_uav_with_ranges(uav_list, iot_objs, gb_objs, seed=SEED)
-    elapsed = time.time() - t0
+    print("\n===== Running Multi-Seed Experiment =====")
+    results = run_multi_seed_experiment(seeds)
 
-    # Evaluate final solution globally
-    V_D_glob, V_U_glob, per_uav_lengths, per_uav_finish_times, feas_flags = evaluate_all_uavs(uavs_res, iot_objs,
-                                                                                              gb_objs)
-    aoi_dict, peak, avg, coverage = compute_aoi_from_VU(V_U_glob, iot_objs)
+    print("\n===== Aggregated Stats =====")
+    final_stats = compute_final_stats(results)
+    for k, v in final_stats.items():
+        print(f"{k}: {v}")
 
-    print(f"seed={SEED}, #IoTs={len(iot_objs)}, #GBSs={len(gb_objs)}, #UAVs={len(uav_list)}")
-    print(f"Elapsed time (s): {elapsed:.3f}")
-    print(f"Peak AoI: {peak}, Average AoI: {avg}, Coverage (fraction): {coverage:.3f}")
-    print("Per-UAV path lengths:", per_uav_lengths)
-    print("Per-UAV finish times:", per_uav_finish_times)
-    print("Per-UAV feasible w.r.t Tmax:", feas_flags)
-    print("\nIndividual AoIs (None means not uploaded):")
-    for iid in sorted(aoi_dict.keys()):
-        print(f" IoT {iid}: AoI = {aoi_dict[iid]}  (t_gen={next(i.t_gen for i in iot_objs if i.id == iid)})")
+    save_results_csv(results, final_stats,
+                     num_iot=NUM_IOT, num_uavs=NUM_UAV, num_gbs=NUM_GBS)
 
-    # Print UAV paths and IoTs handled by each UAV
-    print("\nUAV paths and collected IoTs:")
-    # compute per-uav collected IoTs from V_D_glob ownership: we must attribute captured IoTs to the UAV that had their capture time
-    # We'll evaluate each UAV and find which IoTs it captured (V_D in its local simulation)
-    for u in uavs_res:
-        V_D_loc, V_U_loc, plen, tfin, feas = evaluate_uav_path(u, iot_objs, gb_objs)
-        collected_ids = [iid for iid, tcap in V_D_loc.items() if tcap is not None]
-        print(f" UAV{u.id} path:")
-        for typ, idx, pos in u.path:
-            print(f"   {typ:5s} {str(idx):>4s} @ ({pos[0]:.2f},{pos[1]:.2f})")
-        print(f"   Collected IoT IDs by UAV {u.id}: {collected_ids}")
-        print(f"   Finish time: {tfin}, Path length (approx): {plen}, Feasible: {feas}")
-        print("")
-
-    # Plot
-    plot_solution(iot_objs, gb_objs, uavs_res, title="Greedy multi-UAV (range-aware) result")
