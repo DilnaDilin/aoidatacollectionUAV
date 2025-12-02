@@ -19,7 +19,7 @@ R_IOT = 10.0  # IoT communication range (units)
 R_GBS = 30.0  # GBS communication range (units)
 NUM_UAV = 3
 NUM_GBS = 4
-NUM_IOT = 50  # change this variable to run experiments for 10,20,...
+NUM_IOT = 60  # change this variable to run experiments for 10,20,...
 SEED = 42
 
 

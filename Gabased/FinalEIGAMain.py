@@ -29,7 +29,7 @@ R_IOT = 10.0  # IoT communication range (units)
 R_GBS = 30.0  # GBS communication range (units)
 NUM_UAV = 3
 NUM_GBS = 4
-NUM_IOT = 50  # number of IoT nodes (DCPs)
+NUM_IOT = 60  # number of IoT nodes (DCPs)
 SEED = 42
 
 # EIPGA hyperparameters

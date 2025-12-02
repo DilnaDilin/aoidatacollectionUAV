@@ -32,7 +32,7 @@ R_IOT = 10.0
 R_GBS = 30.0
 NUM_UAV = 3
 NUM_GBS = 4
-NUM_IOT = 50
+NUM_IOT = 60
 SEED = 42
 
 # SFW hyperparameters (tune to match GA/EIPGA budget)

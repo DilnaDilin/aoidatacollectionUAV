@@ -33,7 +33,7 @@ R_IOT = 10.0
 R_GBS = 30.0
 NUM_UAV = 3
 NUM_GBS = 4
-NUM_IOT = 50
+NUM_IOT = 40
 SEED = 42
 
 # ----------------------------
@@ -656,7 +656,7 @@ def save_results_csv(results, final_stats, num_iot=NUM_IOT, num_uavs=NUM_UAV, nu
 # Example usage (multi-seed run)
 # ----------------------------
 if __name__ == "__main__":
-    seeds = [42, 52]  # modify as needed
+    seeds = [42]  # modify as needed
 
     results = run_multi_seed_experiment_aco(seeds)
     final_stats = compute_final_stats(results)

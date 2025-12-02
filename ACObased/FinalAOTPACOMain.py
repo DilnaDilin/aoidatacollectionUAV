@@ -31,7 +31,7 @@ R_IOT = 10.0
 R_GBS = 30.0
 NUM_UAV = 3
 NUM_GBS = 4
-NUM_IOT = 50
+NUM_IOT = 60
 SEED = 42
 
 # ----------------------------
@@ -46,7 +46,7 @@ LAMBDA = 1.0    # ant deposit scalar
 ELITIST_BOOST = 6.0  # multiplier for best-so-far reinforcement (set 0 to disable)
 NO_IMPROVE_LIMIT = 120
 TAU0 = 1.0      # initial pheromone
-SEED_WITH_GREEDY = True  # if True, seed pheromone from greedy
+SEED_WITH_GREEDY = False  # if True, seed pheromone from greedy
 GB_IMMEDIATE_INSERT_THRESHOLD = 2 * R_GBS  # threshold to insert GB immediately
 
 # Fitness weights (normalized)
@@ -360,52 +360,7 @@ def compute_fitness_for_solution(solution_uavs, iot_objs, gb_objs, base_uavs, w_
     return fitness, peak, avg, coverage, sum(per_uav_lengths.values()), per_uav_finish_times, feas, uav_copies
 
 
-def build_greedy_solution(iot_objs, gb_objs, uav_list, R_I=R_IOT, R_G=R_GBS):
-    iot_map = {iot.id: iot for iot in iot_objs}
-    unvisited = set(iot_map.keys())
-    solution_uavs = {u.id: [('start', None, u.start)] for u in uav_list}
-    for u in uav_list:
-        cur_pos = u.start
-        cur_time = 0
-        while True:
-            candidates = []
-            for iid in list(unvisited):
-                iobj = iot_map[iid]
-                i_wp = point_on_line_at_distance_from_target(cur_pos, iobj.pos, R_I)
-                t_arrive = cur_time + travel_time(cur_pos, i_wp, u.V)
-                t_capture = max(t_arrive, iobj.t_gen)
-                nearest_g = min(gb_objs, key=lambda g: dist(i_wp, g.pos))
-                g_wp = point_on_line_at_distance_from_target(i_wp, nearest_g.pos, R_G)
-                t_upload = t_capture + travel_time(i_wp, g_wp, u.V)
-                if t_upload <= u.Tmax:
-                    candidates.append((iid, i_wp, nearest_g.id, g_wp, t_upload))
-            if not candidates:
-                break
-            candidates.sort(key=lambda x: dist(cur_pos, x[1]))
-            iid, i_wp, gid, g_wp, t_upload = candidates[0]
-            solution_uavs[u.id].append(('iot', iid, i_wp))
-            if dist(i_wp, g_wp) < GB_IMMEDIATE_INSERT_THRESHOLD:
-                solution_uavs[u.id].append(('gb', gid, g_wp))
-                cur_pos = g_wp
-            else:
-                cur_pos = i_wp
-            cur_time = int(t_upload)
-            unvisited.discard(iid)
-        solution_uavs[u.id].append(('end', None, u.end))
-    # fallback assignment of remaining (rare)
-    if unvisited:
-        for iid in list(unvisited):
-            iobj = iot_map[iid]
-            best_u = min(uav_list, key=lambda uu: dist(solution_uavs[uu.id][-2][2], iobj.pos))
-            prev_pos = solution_uavs[best_u.id][-2][2]
-            i_wp = point_on_line_at_distance_from_target(prev_pos, iobj.pos, R_I)
-            nearest_g = min(gb_objs, key=lambda g: dist(i_wp, g.pos))
-            g_wp = point_on_line_at_distance_from_target(i_wp, nearest_g.pos, R_G)
-            solution_uavs[best_u.id] = solution_uavs[best_u.id][:-1] + [('iot', iid, i_wp), ('gb', nearest_g.id, g_wp), ('end', None, best_u.end)]
-            unvisited.discard(iid)
-    for u in uav_list:
-        solution_uavs[u.id] = clean_path_remove_consecutive_gbs(solution_uavs[u.id], u)
-    return solution_uavs
+
 
 
 # ----------------------------
@@ -418,22 +373,22 @@ def run_aco(iot_objs, gb_objs, uav_list):
     pheromone, start_tau = init_pheromone(n, TAU0)
 
     # optional greedy seed
-    if SEED_WITH_GREEDY:
-        greedy_sol = build_greedy_solution(iot_objs, gb_objs, uav_list)
+    #if SEED_WITH_GREEDY:
+     #   greedy_sol = build_greedy_solution(iot_objs, gb_objs, uav_list)
         # reinforce edges from greedy
-        boost = TAU0 * 5.0
-        for u in uav_list:
-            prev_idx = None
-            for typ, idx, pos in greedy_sol[u.id]:
-                if typ == 'iot':
-                    cur_idx = int(idx) - 1
-                    if prev_idx is None:
-                        start_tau[cur_idx] += boost
-                    else:
-                        pheromone[prev_idx, cur_idx] += boost
-                    prev_idx = cur_idx
-                elif typ == 'start':
-                    prev_idx = None
+      #  boost = TAU0 * 5.0
+      #  for u in uav_list:
+       #     prev_idx = None
+        #    for typ, idx, pos in greedy_sol[u.id]:
+        #        if typ == 'iot':
+        #            cur_idx = int(idx) - 1
+        #            if prev_idx is None:
+         #               start_tau[cur_idx] += boost
+         #           else:
+         #               pheromone[prev_idx, cur_idx] += boost
+         #           prev_idx = cur_idx
+         #       elif typ == 'start':
+          #          prev_idx = None
 
     best_solution = None
     best_fitness = float('inf')

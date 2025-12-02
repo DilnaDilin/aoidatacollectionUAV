@@ -1,0 +1,143 @@
+Scenario Information
+Number of IoT Nodes,10
+Number of UAVs,3
+Number of Ground BS,4
+
+Seed,Peak AOI,Avg AOI,Coverage,Total Distance,Unserved IoT,Runtime (s)
+42,83,71.5,1.0,2855.5216626258753,0,10.850264072418213
+IoT-Level AoIs for Seed,42
+IoT 1,66,t_gen=6
+IoT 2,66,t_gen=17
+IoT 3,66,t_gen=17
+IoT 4,64,t_gen=8
+IoT 5,81,t_gen=5
+IoT 6,82,t_gen=4
+IoT 7,83,t_gen=3
+IoT 8,61,t_gen=11
+IoT 9,72,t_gen=14
+IoT 10,74,t_gen=12
+
+50,84,46.3,1.0,2496.73746362996,0,9.922612428665161
+IoT-Level AoIs for Seed,50
+IoT 1,84,t_gen=4
+IoT 2,17,t_gen=11
+IoT 3,18,t_gen=10
+IoT 4,75,t_gen=13
+IoT 5,67,t_gen=2
+IoT 6,49,t_gen=20
+IoT 7,78,t_gen=10
+IoT 8,34,t_gen=3
+IoT 9,19,t_gen=18
+IoT 10,22,t_gen=6
+
+55,88,51.2,1.0,2316.474409677339,0,9.913617610931396
+IoT-Level AoIs for Seed,55
+IoT 1,74,t_gen=15
+IoT 2,77,t_gen=12
+IoT 3,9,t_gen=17
+IoT 4,81,t_gen=8
+IoT 5,39,t_gen=0
+IoT 6,88,t_gen=1
+IoT 7,19,t_gen=20
+IoT 8,83,t_gen=6
+IoT 9,39,t_gen=0
+IoT 10,3,t_gen=9
+
+60,73,58.3,1.0,2308.5319045972865,0,10.21882700920105
+IoT-Level AoIs for Seed,60
+IoT 1,47,t_gen=5
+IoT 2,61,t_gen=20
+IoT 3,47,t_gen=5
+IoT 4,67,t_gen=4
+IoT 5,53,t_gen=18
+IoT 6,62,t_gen=9
+IoT 7,64,t_gen=7
+IoT 8,63,t_gen=8
+IoT 9,73,t_gen=8
+IoT 10,46,t_gen=6
+
+65,90,54.3,1.0,2386.0423043216742,0,11.95070743560791
+IoT-Level AoIs for Seed,65
+IoT 1,77,t_gen=17
+IoT 2,12,t_gen=15
+IoT 3,77,t_gen=3
+IoT 4,40,t_gen=4
+IoT 5,90,t_gen=4
+IoT 6,60,t_gen=20
+IoT 7,24,t_gen=20
+IoT 8,43,t_gen=1
+IoT 9,84,t_gen=10
+IoT 10,36,t_gen=8
+
+85,70,55.2,1.0,2442.4485510875083,0,9.095184087753296
+IoT-Level AoIs for Seed,85
+IoT 1,66,t_gen=17
+IoT 2,56,t_gen=18
+IoT 3,70,t_gen=13
+IoT 4,16,t_gen=2
+IoT 5,41,t_gen=14
+IoT 6,67,t_gen=7
+IoT 7,61,t_gen=13
+IoT 8,69,t_gen=5
+IoT 9,39,t_gen=16
+IoT 10,67,t_gen=7
+
+90,82,52.8,1.0,2593.331817571108,0,12.974744081497192
+IoT-Level AoIs for Seed,90
+IoT 1,65,t_gen=8
+IoT 2,58,t_gen=4
+IoT 3,50,t_gen=12
+IoT 4,18,t_gen=4
+IoT 5,61,t_gen=1
+IoT 6,82,t_gen=16
+IoT 7,19,t_gen=3
+IoT 8,62,t_gen=0
+IoT 9,57,t_gen=5
+IoT 10,56,t_gen=17
+
+105,83,53.7,1.0,2262.7781282666365,0,14.354059934616089
+IoT-Level AoIs for Seed,105
+IoT 1,36,t_gen=4
+IoT 2,33,t_gen=5
+IoT 3,49,t_gen=14
+IoT 4,83,t_gen=7
+IoT 5,73,t_gen=9
+IoT 6,47,t_gen=16
+IoT 7,72,t_gen=10
+IoT 8,60,t_gen=3
+IoT 9,33,t_gen=5
+IoT 10,51,t_gen=12
+
+49,45,34.5,1.0,2310.7448749405216,0,9.138951301574707
+IoT-Level AoIs for Seed,49
+IoT 1,36,t_gen=20
+IoT 2,38,t_gen=19
+IoT 3,30,t_gen=0
+IoT 4,17,t_gen=13
+IoT 5,36,t_gen=11
+IoT 6,28,t_gen=19
+IoT 7,40,t_gen=17
+IoT 8,45,t_gen=2
+IoT 9,40,t_gen=17
+IoT 10,35,t_gen=7
+
+110,67,40.1,1.0,2164.7865529417018,0,10.095808982849121
+IoT-Level AoIs for Seed,110
+IoT 1,24,t_gen=1
+IoT 2,46,t_gen=2
+IoT 3,32,t_gen=16
+IoT 4,67,t_gen=7
+IoT 5,32,t_gen=16
+IoT 6,31,t_gen=17
+IoT 7,62,t_gen=4
+IoT 8,41,t_gen=7
+IoT 9,23,t_gen=2
+IoT 10,43,t_gen=5
+
+Final Averages
+avg_peak_aoi,76.5
+avg_avg_aoi,51.79
+avg_coverage,1.0
+avg_total_dist,2413.7397669659613
+avg_unserved,0.0
+avg_runtime,10.851477694511413

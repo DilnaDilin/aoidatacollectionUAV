@@ -32,24 +32,34 @@ R_IOT = 10.0
 R_GBS = 30.0
 NUM_UAV = 3
 NUM_GBS = 4
-NUM_IOT = 60
+NUM_IOT = 40
 SEED = 42
 
 # SFW hyperparameters (tune to match GA/EIPGA budget)
-POP = 30
+POP = 0
 MAX_ITERS = 100
 LEVY_BETA = 1.5
 # SFW-specific parameters (following MATLAB variable choices)
-C_PARAM = 0.2
+C_PARAM = 0.8
 
 # Fitness weights (sum not required; they weight each term)
 W_PEAK = 0.6
 W_AVG = 0.3
 W_DIST = 0.1
 W_PEN = 0.1
-
+GB_IMMEDIATE_INSERT_THRESHOLD = 2 * R_GBS  # threshold to insert GB immediately
 # Penalty coefficient for Tmax violations (large)
 PENALTY_COEFF = 1000.0
+
+
+# --- AFGMS (Adaptive Fitness-Guided Mutation Strategy) ---
+PM_LOW = 0.02     # minimum mutation probability (for best individuals)
+PM_HIGH = 0.45    # maximum mutation probability (for poor individuals)
+GAMMA = 1.0       # sensitivity exponent
+SIGMA_G = 0.04    # Gaussian noise scale
+SIGMA_C = 0.08    # Cauchy noise scale (heavy-tailed jumps)
+SCALE0 = 1.0      # base mutation scale (will decay over iterations)
+EPS = 1e-12
 
 # Encoding dimension: keys + (num_uav-1) continuous breakpoints
 DIM = NUM_IOT + max(0, NUM_UAV - 1)
@@ -210,7 +220,28 @@ def compute_aoi_from_VU(V_U_glob, iot_objs):
 # ----------------------------
 # Build routes from assignment (same as GA/EIPGA)
 # ----------------------------
-def build_routes_from_assignment(assign: List[int], iot_objs: List[IoT], gb_objs: List[GBS], uav_list: List[UAV], R_I=R_IOT, R_G=R_GBS):
+def build_routes_from_assignment(assign: List[int],
+                                 iot_objs: List[IoT],
+                                 gb_objs: List[GBS],
+                                 uav_list: List[UAV],
+                                 R_I=R_IOT,
+                                 R_G=R_GBS):
+    """
+    Construct UAV routes from an assignment vector assign[i] = u (0..num_uav-1),
+    using the same path-construction policy as your `construct_solution`:
+      - For each UAV: iterate while there are still assigned IoTs that can
+        be scheduled within Tmax (based on arrival->capture->upload time).
+      - Compute IoT waypoint with `point_on_line_at_distance_from_target`.
+      - Compute nearest GBS and its boundary waypoint (g_wp).
+      - Append ('iot', iid, i_wp) and *conditionally* append ('gb', gid, g_wp)
+        immediately if dist(i_wp, g_wp) < GB_IMMEDIATE_INSERT_THRESHOLD.
+      - Use a nearest-distance tiebreaker when choosing among feasible candidates.
+      - If some assigned IoTs cannot be scheduled for a UAV due to Tmax, they
+        remain unvisited and will be assigned in the fallback phase (nearest UAV).
+    This mirrors the behavior of your `construct_solution` but works from a
+    deterministic assignment vector.
+    """
+    # Map assigned IoTs per UAV (uav IDs are 1-based in your UAV objects)
     assigned = {u.id: [] for u in uav_list}
     for idx, gene in enumerate(assign):
         uidx = int(gene)
@@ -218,37 +249,98 @@ def build_routes_from_assignment(assign: List[int], iot_objs: List[IoT], gb_objs
         if u_id in assigned:
             assigned[u_id].append(iot_objs[idx].id)
 
-    routes = {u.id: [('start', None, u.start)] for u in uav_list}
+    # quick lookup
     iot_map = {iot.id: iot for iot in iot_objs}
+    all_unassigned = set()  # will collect IoTs that could not be scheduled for their UAV
+
+    routes = {u.id: [('start', None, u.start)] for u in uav_list}
 
     for u in uav_list:
         cur_pos = u.start
-        remaining = assigned[u.id][:]
-        order = []
-        while remaining:
-            best = min(remaining, key=lambda iid: dist(cur_pos, iot_map[iid].pos))
-            order.append(best)
-            cur_pos = iot_map[best].pos
-            remaining.remove(best)
-        prev_pos = u.start
-        for iid in order:
+        cur_time = 0
+        remaining = assigned[u.id][:]  # copy
+        chosen_order = []
+
+        # loop picking feasible candidates (same feasibility check as in construct_solution)
+        while True:
+            candidates = []
+            for iid in list(remaining):
+                iobj = iot_map[iid]
+                i_wp = point_on_line_at_distance_from_target(cur_pos, iobj.pos, R_I)
+                t_arrive = cur_time + travel_time(cur_pos, i_wp, u.V)
+                t_capture = max(t_arrive, iobj.t_gen)
+                nearest_g = min(gb_objs, key=lambda g: dist(i_wp, g.pos))
+                g_wp = point_on_line_at_distance_from_target(i_wp, nearest_g.pos, R_G)
+                t_upload = t_capture + travel_time(i_wp, g_wp, u.V)
+                # only consider if this IoT can be uploaded before Tmax (feasible now)
+                if t_upload <= u.Tmax:
+                    candidates.append((iid, i_wp, nearest_g.id, g_wp, t_upload))
+
+            if not candidates:
+                # no more feasible IoTs for this UAV (stop)
+                break
+
+            # choose nearest (in space from cur_pos) among candidates (ties broken by t_upload)
+            candidates.sort(key=lambda c: (dist(cur_pos, c[1]), c[4]))
+            iid, i_wp, gid, g_wp, t_upload = candidates[0]
+
+            # append IoT visit
+            routes[u.id].append(('iot', iid, i_wp))
+            chosen_order.append(iid)
+
+            # conditional immediate GBS insertion (same threshold rule)
+            if dist(i_wp, g_wp) < GB_IMMEDIATE_INSERT_THRESHOLD:
+                routes[u.id].append(('gb', gid, g_wp))
+                cur_pos = g_wp
+            else:
+                cur_pos = i_wp
+
+            cur_time = int(t_upload)
+            # remove visited from remaining
+            remaining.remove(iid)
+
+        # after greedy loop, put end waypoint
+        routes[u.id].append(('end', None, u.end))
+        # clean consecutive gb entries and ensure start/end correctness
+        routes[u.id] = clean_path_remove_consecutive_gbs(routes[u.id], u)
+
+        # any IoTs still in remaining are ones assigned to this UAV but not feasible now:
+        # collect them for fallback assignment
+        for iid in remaining:
+            all_unassigned.add(iid)
+
+    # Fallback: assign any still-unvisited IoTs to the nearest UAV (by last waypoint)
+    if all_unassigned:
+        for iid in list(all_unassigned):
             iobj = iot_map[iid]
+            # find UAV whose last meaningful position (before 'end') is closest to the IoT
+            def last_pos_for(u):
+                path = routes[u.id]
+                # take the penultimate waypoint (last before 'end') if exists, else start
+                if len(path) >= 2:
+                    return path[-2][2]
+                return u.start
+            best_u = min(uav_list, key=lambda uu: dist(last_pos_for(uu), iobj.pos))
+            prev_pos = last_pos_for(best_u)
             i_wp = point_on_line_at_distance_from_target(prev_pos, iobj.pos, R_I)
             nearest_g = min(gb_objs, key=lambda g: dist(i_wp, g.pos))
             g_wp = point_on_line_at_distance_from_target(i_wp, nearest_g.pos, R_G)
-            routes[u.id].append(('iot', iid, i_wp))
-            if dist(i_wp, g_wp) < 2 * R_GBS:
-                routes[u.id].append(('gb', nearest_g.id, g_wp))
-                prev_pos = g_wp
-            else:
-                prev_pos = i_wp
-        routes[u.id].append(('end', None, u.end))
-        routes[u.id] = clean_path_remove_consecutive_gbs(routes[u.id], u)
+            # insert before 'end'
+            r = routes[best_u.id]
+            r = r[:-1] + [('iot', iid, i_wp)]
+            if dist(i_wp, g_wp) < GB_IMMEDIATE_INSERT_THRESHOLD:
+                r += [('gb', nearest_g.id, g_wp)]
+            r += [('end', None, best_u.end)]
+            r = clean_path_remove_consecutive_gbs(r, best_u)
+            routes[best_u.id] = r
+            all_unassigned.discard(iid)
 
+    # pack into uav_paths dict keyed by UAV.id
     uav_paths = {}
     for u in uav_list:
         uav_paths[u.id] = routes[u.id]
     return uav_paths
+
 
 # ----------------------------
 # NEW: evaluate_assignment_fitness -> composite weighted score (minimize)
@@ -358,6 +450,98 @@ def levy_flight(shape, beta=LEVY_BETA):
 def initialization(pop, dim, ub, lb):
     return np.random.uniform(lb, ub, size=(pop, dim))
 
+
+def encode_chrom_to_continuous(chrom, num_iot, num_uav, lb=-2.0, ub=2.0):
+    """
+    chrom: (perm, bps)
+    returns: X_cont numpy array of length num_iot + max(0, num_uav-1)
+    Strategy:
+      - For perm: assign increasing key values in [-0.9,0.9] according to perm order, then scale to [lb,ub]
+      - For bps: map integer breakpoint positions -> continuous via inverse of the tanh scaling
+    """
+    perm, bps = chrom
+    dim_perm = num_iot
+    dim_bp = max(0, num_uav - 1)
+    X = np.zeros(dim_perm + dim_bp, dtype=float)
+
+    # Perm keys in order of positions
+    if num_iot == 1:
+        keys = [0.0]
+    else:
+        keys = np.linspace(-0.9, 0.9, num=num_iot)
+    for pos, iot_idx in enumerate(perm):
+        X[iot_idx] = keys[pos]
+
+    # Breakpoints inverse mapping
+    if dim_bp > 0:
+        if num_iot <= 2:
+            for j in range(dim_bp):
+                X[dim_perm + j] = 0.0
+        else:
+            for j in range(dim_bp):
+                if j < len(bps):
+                    b = bps[j]
+                    b = max(1, min(num_iot - 1, int(b)))
+                    frac = (b - 1) / float(num_iot - 2)
+                    target_s = frac * 2.0 - 1.0
+                    target_s = max(-0.999999, min(0.999999, target_s))
+                    v = 0.5 * math.log((1 + target_s) / (1 - target_s))  # arctanh
+                    X[dim_perm + j] = float(v)
+                else:
+                    X[dim_perm + j] = 0.0
+
+    # clip and scale to [lb,ub]
+    X = np.clip(X, -1.5, 1.5)
+    X_scaled = lb + (X + 1.5) * ((ub - lb) / 3.0)
+    return X_scaled
+
+def build_greedy_solution(iot_objs, gb_objs, uav_list, R_I=R_IOT, R_G=R_GBS):
+    iot_map = {iot.id: iot for iot in iot_objs}
+    unvisited = set(iot_map.keys())
+    solution_uavs = {u.id: [('start', None, u.start)] for u in uav_list}
+    for u in uav_list:
+        cur_pos = u.start
+        cur_time = 0
+        while True:
+            candidates = []
+            for iid in list(unvisited):
+                iobj = iot_map[iid]
+                i_wp = point_on_line_at_distance_from_target(cur_pos, iobj.pos, R_I)
+                t_arrive = cur_time + travel_time(cur_pos, i_wp, u.V)
+                t_capture = max(t_arrive, iobj.t_gen)
+                nearest_g = min(gb_objs, key=lambda g: dist(i_wp, g.pos))
+                g_wp = point_on_line_at_distance_from_target(i_wp, nearest_g.pos, R_G)
+                t_upload = t_capture + travel_time(i_wp, g_wp, u.V)
+                if t_upload <= u.Tmax:
+                    candidates.append((iid, i_wp, nearest_g.id, g_wp, t_upload))
+            if not candidates:
+                break
+            candidates.sort(key=lambda x: dist(cur_pos, x[1]))
+            iid, i_wp, gid, g_wp, t_upload = candidates[0]
+            solution_uavs[u.id].append(('iot', iid, i_wp))
+            if dist(i_wp, g_wp) < GB_IMMEDIATE_INSERT_THRESHOLD:
+                solution_uavs[u.id].append(('gb', gid, g_wp))
+                cur_pos = g_wp
+            else:
+                cur_pos = i_wp
+            cur_time = int(t_upload)
+            unvisited.discard(iid)
+        solution_uavs[u.id].append(('end', None, u.end))
+    # fallback assignment of remaining (rare)
+    if unvisited:
+        for iid in list(unvisited):
+            iobj = iot_map[iid]
+            best_u = min(uav_list, key=lambda uu: dist(solution_uavs[uu.id][-2][2], iobj.pos))
+            prev_pos = solution_uavs[best_u.id][-2][2]
+            i_wp = point_on_line_at_distance_from_target(prev_pos, iobj.pos, R_I)
+            nearest_g = min(gb_objs, key=lambda g: dist(i_wp, g.pos))
+            g_wp = point_on_line_at_distance_from_target(i_wp, nearest_g.pos, R_G)
+            solution_uavs[best_u.id] = solution_uavs[best_u.id][:-1] + [('iot', iid, i_wp), ('gb', nearest_g.id, g_wp), ('end', None, best_u.end)]
+            unvisited.discard(iid)
+    for u in uav_list:
+        solution_uavs[u.id] = clean_path_remove_consecutive_gbs(solution_uavs[u.id], u)
+    return solution_uavs
+
 # ----------------------------
 # SFW main loop (adapted)
 # ----------------------------
@@ -373,6 +557,41 @@ def run_sfw(iot_objs, gb_objs, uav_list, pop=POP, max_iters=MAX_ITERS):
     best_position = None
     best_curve = []
     eval_cache = {}
+
+    # Optional greedy seed (encode greedy path into continuous keys)
+    SEED_WITH_GREEDY = True
+    if SEED_WITH_GREEDY:
+        greedy_sol = build_greedy_solution(iot_objs, gb_objs, uav_list)
+        # extract (perm,bps) from greedy_sol
+        perm_list = []
+        bps_list = []
+        for u in uav_list:
+            seg = []
+            for typ, idx, pos in greedy_sol[u.id]:
+                if typ == 'iot':
+                    seg.append(idx - 1)  # IoT id -> zero-based index
+            perm_list.extend(seg)
+            if u.id != uav_list[-1].id:
+                bps_list.append(len(perm_list))
+        # append any missing IoTs
+        all_idx = set(range(num_iot))
+        missing = list(all_idx - set(perm_list))
+        if missing:
+            perm_list.extend(missing)
+        # trim/pad breakpoints
+        while len(bps_list) < max(0, num_uav - 1):
+            last = bps_list[-1] if bps_list else 0
+            candidate = min(num_iot - 1, last + 1)
+            bps_list.append(candidate)
+        bps_list = bps_list[:max(0, num_uav - 1)]
+        greedy_chrom = (perm_list, bps_list)
+        X_greedy = encode_chrom_to_continuous(greedy_chrom, num_iot, num_uav, lb=lb, ub=ub)
+        for i in range(round(pop / 2)):
+            X[i] = X_greedy
+        n_seed_perturb = min(3, pop - 1)
+        for k in range(1, 1 + n_seed_perturb):
+            noise = np.random.normal(scale=0.05, size=dim)
+            X[k] = np.clip(X_greedy + noise, lb, ub)
 
     def eval_cont_vector(x_cont):
         chrom, assign = continuous_to_chrom_and_assign(x_cont, num_iot, num_uav)
@@ -431,6 +650,74 @@ def run_sfw(iot_objs, gb_objs, uav_list, pop=POP, max_iters=MAX_ITERS):
                 if score < best_fitness:
                     best_fitness = score
                     best_position = X[i].copy()
+
+
+
+        # ----------------------------
+        # AFGMS: Adaptive Fitness-Guided Mutation Strategy
+        # ----------------------------
+        # compute population stats
+        fmin = float(np.min(fitness))
+        fmax = float(np.max(fitness))
+        fmean = float(np.mean(fitness))
+        # decay factor for mutation magnitude (stronger earlier)
+        decay = (1.0 - (it / float(max_iters)))  # linear decay [1..0]
+        adapt_scale = SCALE0 * decay
+
+        for i in range(pop):
+            fi = fitness[i]
+            # compute adaptive mutation probability pm
+            if fi <= fmean:
+                # normalized ratio: 0 (best) -> 1 (close to mean)
+                denom = (fmean - fmin) + EPS
+                ratio = max(0.0, min(1.0, (fi - fmin) / denom))
+                pm = PM_LOW + (PM_HIGH - PM_LOW) * (ratio ** GAMMA)
+            else:
+                pm = PM_HIGH
+            # perform mutation with probability pm
+            if random.random() < pm:
+                # hybrid mutation: Gaussian + scaled Cauchy (heavy-tailed)
+                gaussian = np.random.randn(dim) * SIGMA_G
+                # Cauchy via standard_cauchy
+                cauchy = np.random.standard_cauchy(size=dim) * SIGMA_C
+                noise = adapt_scale * (gaussian + cauchy)
+                Xmut = X[i] + noise
+                Xmut = np.maximum(Xmut, lb)
+                Xmut = np.minimum(Xmut, ub)
+                # evaluate and accept if better (greedy acceptance)
+                score_mut, *_ = eval_cont_vector(Xmut)
+                if score_mut < fitness[i]:
+                    X[i] = Xmut
+                    fitness[i] = score_mut
+                    if score_mut < best_fitness:
+                        best_fitness = score_mut
+                        best_position = X[i].copy()
+
+        # ---------- OBL helper ----------
+        def opposition_vector(x, lb, ub):
+            """Return opposition vector in continuous space."""
+            return (lb + ub) - x
+        # OBL settings
+        OBL_PROB = 0.5
+
+        # lb, ub are scalars in your code; construct arrays:
+        lb_arr = np.ones(dim) * lb
+        ub_arr = np.ones(dim) * ub
+        kl = round(pop/2)
+        best_idxs = np.argsort(fitness)[-kl:]
+        for i in best_idxs:
+            if random.random() < OBL_PROB:
+                x_opp = opposition_vector(X[i], lb_arr, ub_arr)
+                # clip just in case
+                x_opp = np.clip(x_opp, lb, ub)
+                score_opp, *_ = eval_cont_vector(x_opp)
+                if score_opp < fitness[i]:
+                    X[i] = x_opp
+                    fitness[i] = score_opp
+                    if score_opp < best_fitness:
+                        best_fitness = score_opp
+                        best_position = X[i].copy()
+
         best_curve.append(best_fitness)
         if it % 10 == 0 or it == max_iters:
             info = eval_cont_vector(best_position)
@@ -498,75 +785,112 @@ def plot_solution(iot_list, gb_list, uav_list, title="SFW solution"):
 # ----------------------------
 
 
-
-
+# ============================================================
+# 📌 MULTI-SEED EXPERIMENT FOR SFW-AFGMS
+# ============================================================
 import datetime
 import csv
 import time
 
-# ----------------------------
-# Multi-seed experiment driver for SFW
-# ----------------------------
-def run_multi_seed_experiment_sfw(seeds_list, num_iot=NUM_IOT, num_gbs=NUM_GBS, num_uavs=NUM_UAV):
+def run_multi_seed_experiment(
+    seeds_list,
+    num_iot=NUM_IOT,
+    num_gbs=NUM_GBS,
+    num_uavs=NUM_UAV,
+    pop=POP,
+    max_iters=MAX_ITERS
+):
     results = []
 
     for s in seeds_list:
         print("\n==============================")
-        print(f" Running SFW Experiment - Seed {s}")
+        print(f" Running Experiment - Seed {s}")
         print("==============================")
 
+        # ---------------------------
         # Build scenario
-        iot_objs, gb_objs, uav_list = build_random_scenario(num_iot=num_iot, num_gbs=num_gbs, num_uavs=num_uavs, seed=s)
-        print(f"Scenario: IoTs={len(iot_objs)}, GBSs={len(gb_objs)}, UAVs={len(uav_list)}")
+        # ---------------------------
+        iot_objs, gb_list, uav_list = build_random_scenario(
+            num_iot=num_iot, num_gbs=num_gbs, num_uavs=num_uavs, seed=s
+        )
+        print(f"Scenario: IoTs={len(iot_objs)}, GBSs={len(gb_list)}, UAVs={len(uav_list)}")
 
-        # Run SFW
+        # ---------------------------
+        # Run SFW-AFGMS
+        # ---------------------------
         t0 = time.time()
-        best_chrom, best_assign, best_res, history = run_sfw(iot_objs, gb_objs, uav_list, pop=POP, max_iters=MAX_ITERS)
+        best_chrom, best_assign, best_res, curve = run_sfw(
+            iot_objs, gb_list, uav_list, pop=pop, max_iters=max_iters
+        )
         elapsed = time.time() - t0
         print(f"SFW done in {elapsed:.2f}s: best_score={best_res[0]:.6f}")
+        print("Best info (score, peak, avg, coverage, tot_dist):",
+              best_res[0], best_res[1], best_res[2], best_res[3], best_res[4])
 
         uav_copies = best_res[7]
-        V_D_glob, V_U_glob, per_uav_lengths, per_uav_finish_times, feas_flags = evaluate_all_uavs(uav_copies, iot_objs, gb_objs)
+
+        # ---------------------------
+        # Evaluate UAV paths
+        # ---------------------------
+        V_D_glob, V_U_glob, per_uav_lengths, per_uav_finish_times, feas_flags = evaluate_all_uavs(
+            uav_copies, iot_objs, gb_list
+        )
         aoi_dict, peak, avg, coverage = compute_aoi_from_VU(V_U_glob, iot_objs)
 
-        # Unserved IoTs
-        served_iots = {iot_id for iot_id, v in V_U_glob.items() if v is not None}
-        all_ids = set(iot.id for iot in iot_objs)
-        not_served_ids = all_ids - served_iots
-
+        # ---------------------------
+        # Print detailed UAV info
+        # ---------------------------
         print("Per-UAV finish times:", per_uav_finish_times)
         print("Per-UAV feasible:", feas_flags)
         print(f"Peak AoI: {peak}, Avg AoI: {avg}, Coverage: {coverage:.3f}")
-        print(f"Not served IoTs: {not_served_ids}, total: {len(not_served_ids)}")
+
+        for u in uav_copies:
+            print(f"UAV{u.id} path:")
+            for typ, idx, pos in u.path:
+                print(f"  {typ:5s} {str(idx):>4s} @ ({pos[0]:.2f},{pos[1]:.2f})")
+            print("")
+
+        # ---------------------------
+        # Plot solution per seed
+        # ---------------------------
+       # plot_solution(iot_objs, gb_list, uav_copies,
+        #              title=f"SFW multi-UAV Solution | Seed {s}")
+
+        # ---------------------------
+        # Save seed results
+        # ---------------------------
+        t_gen_map = {i.id: i.t_gen for i in iot_objs}
+        unserved = sum(1 for v in aoi_dict.values() if v is None)
 
         results.append({
             "seed": s,
-            "fitness": best_res[0],
             "peak_aoi": peak,
             "avg_aoi": avg,
             "coverage": coverage,
             "total_dist": sum(per_uav_lengths.values()),
-            "unserved": len(not_served_ids),
+            "unserved": unserved,
             "runtime_sec": elapsed,
             "aoi_dict": aoi_dict,
-            "t_gen_map": {i.id: i.t_gen for i in iot_objs},
+            "t_gen_map": t_gen_map,
             "per_uav_finish_times": per_uav_finish_times,
             "feas_flags": feas_flags,
             "uav_paths": {u.id: u.path for u in uav_copies}
         })
 
+        print(f"[Seed {s}] Peak={peak}, Avg={avg:.2f}, Cov={coverage:.2f}, "
+              f"Dist={sum(per_uav_lengths.values()):.1f}, Unserved={unserved}")
+
     return results
 
-# ----------------------------
-# Compute aggregated stats
-# ----------------------------
-def compute_final_stats_sfw(results):
+
+
+# Aggregated statistics
+def compute_final_stats(results):
     def avg(field):
         vals = [r[field] for r in results if r[field] is not None]
         return sum(vals) / len(vals) if vals else None
 
     final = {
-        "avg_fitness": avg("fitness"),
         "avg_peak_aoi": avg("peak_aoi"),
         "avg_avg_aoi": avg("avg_aoi"),
         "avg_coverage": avg("coverage"),
@@ -576,55 +900,62 @@ def compute_final_stats_sfw(results):
     }
     return final
 
-# ----------------------------
-# Save results to CSV
-# ----------------------------
-def save_results_csv_sfw(results, final_stats, num_iot=NUM_IOT, num_uavs=NUM_UAV, num_gbs=NUM_GBS):
+
+# Save to CSV
+def save_results_csv(results, final_stats, num_iot, num_uavs, num_gbs):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"sfw_multi_seed_results_{timestamp}.csv"
 
     with open(filename, "w", newline="") as f:
         writer = csv.writer(f)
 
-        # Scenario info
+        # Top general configuration
         writer.writerow(["Scenario Information"])
         writer.writerow(["Number of IoT Nodes", num_iot])
         writer.writerow(["Number of UAVs", num_uavs])
         writer.writerow(["Number of Ground BS", num_gbs])
         writer.writerow([])
 
-        # Header
-        writer.writerow(["Seed", "Fitness", "Peak AOI", "Avg AOI", "Coverage",
-                         "Total Distance", "Unserved IoT", "Runtime (s)"])
+        # Seed metrics table header
+        writer.writerow([
+            "Seed", "Peak AOI", "Avg AOI", "Coverage",
+            "Total Distance", "Unserved IoT", "Runtime (s)"
+        ])
 
-        # Seed results
         for r in results:
-            writer.writerow([r["seed"], r["fitness"], r["peak_aoi"], r["avg_aoi"], r["coverage"],
-                             r["total_dist"], r["unserved"], r["runtime_sec"]])
-            # IoT-level AoI
-            writer.writerow(["Individual AoIs for Seed", r["seed"]])
+            writer.writerow([
+                r["seed"], r["peak_aoi"], r["avg_aoi"], r["coverage"],
+                r["total_dist"], r["unserved"], r["runtime_sec"]
+            ])
+
+            writer.writerow(["IoT-Level AoIs for Seed", r["seed"]])
             for iid in sorted(r["aoi_dict"].keys()):
-                writer.writerow([f"IoT {iid}", r["aoi_dict"][iid], f"t_gen={r['t_gen_map'][iid]}"])
+                writer.writerow([
+                    f"IoT {iid}",
+                    r["aoi_dict"][iid],
+                    f"t_gen={r['t_gen_map'][iid]}"
+                ])
             writer.writerow([])
 
-        # Final aggregated metrics
+        # Final averages row
         writer.writerow(["Final Averages"])
         for k, v in final_stats.items():
             writer.writerow([k, v])
 
     print(f"\n📁 Detailed results saved to: {filename}")
 
-# ----------------------------
-# Example usage
-# ----------------------------
-if __name__ == "__main__":
-    seeds = [42, 50, 55, 60, 65, 85, 90, 105, 49, 110]
 
-    results = run_multi_seed_experiment_sfw(seeds)
-    final_stats = compute_final_stats_sfw(results)
+# MAIN
+if __name__ == "__main__":
+    seeds = [42, 50, 55, 60, 65, 85, 90, 105, 49, 110]  # Your desired seeds
+
+    print("\n===== Running Multi-Seed SFW-AFGMS Experiment =====")
+    results = run_multi_seed_experiment(seeds)
 
     print("\n===== Aggregated Stats =====")
+    final_stats = compute_final_stats(results)
     for k, v in final_stats.items():
         print(f"{k}: {v}")
 
-    save_results_csv_sfw(results, final_stats)
+    save_results_csv(results, final_stats,
+                     num_iot=NUM_IOT, num_uavs=NUM_UAV, num_gbs=NUM_GBS)
