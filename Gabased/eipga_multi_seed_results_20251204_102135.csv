@@ -1,0 +1,244 @@
+Scenario Information
+Number of IoT Nodes,20
+Number of UAVs,2
+Number of Ground BS,4
+
+Seed,Fitness,Peak AOI,Avg AOI,Coverage,Total Distance,Unserved IoT,Runtime (s)
+42,0.025455,148,84.85,1.0,3023.80622271555,0,71.65970468521118
+Individual AoIs for Seed,42
+IoT 1,106,t_gen=6
+IoT 2,57,t_gen=17
+IoT 3,57,t_gen=17
+IoT 4,66,t_gen=8
+IoT 5,7,t_gen=5
+IoT 6,113,t_gen=4
+IoT 7,109,t_gen=3
+IoT 8,63,t_gen=11
+IoT 9,98,t_gen=14
+IoT 10,100,t_gen=12
+IoT 11,54,t_gen=20
+IoT 12,94,t_gen=18
+IoT 13,67,t_gen=7
+IoT 14,148,t_gen=7
+IoT 15,103,t_gen=14
+IoT 16,106,t_gen=11
+IoT 17,92,t_gen=20
+IoT 18,57,t_gen=17
+IoT 19,105,t_gen=12
+IoT 20,95,t_gen=17
+
+50,0.019304999999999996,150,64.35,1.0,2403.2377303445137,0,61.11350345611572
+Individual AoIs for Seed,50
+IoT 1,40,t_gen=4
+IoT 2,24,t_gen=11
+IoT 3,25,t_gen=10
+IoT 4,140,t_gen=13
+IoT 5,102,t_gen=2
+IoT 6,84,t_gen=20
+IoT 7,34,t_gen=10
+IoT 8,77,t_gen=3
+IoT 9,17,t_gen=18
+IoT 10,38,t_gen=6
+IoT 11,25,t_gen=19
+IoT 12,150,t_gen=3
+IoT 13,87,t_gen=17
+IoT 14,63,t_gen=17
+IoT 15,26,t_gen=18
+IoT 16,93,t_gen=11
+IoT 17,33,t_gen=11
+IoT 18,67,t_gen=13
+IoT 19,65,t_gen=20
+IoT 20,97,t_gen=7
+
+55,0.0192,118,64.0,1.0,2697.614106592738,0,59.109023571014404
+Individual AoIs for Seed,55
+IoT 1,111,t_gen=15
+IoT 2,45,t_gen=12
+IoT 3,82,t_gen=17
+IoT 4,49,t_gen=8
+IoT 5,26,t_gen=0
+IoT 6,98,t_gen=1
+IoT 7,34,t_gen=20
+IoT 8,51,t_gen=6
+IoT 9,54,t_gen=0
+IoT 10,98,t_gen=9
+IoT 11,50,t_gen=7
+IoT 12,92,t_gen=7
+IoT 13,48,t_gen=6
+IoT 14,41,t_gen=13
+IoT 15,80,t_gen=3
+IoT 16,55,t_gen=2
+IoT 17,118,t_gen=8
+IoT 18,24,t_gen=2
+IoT 19,84,t_gen=15
+IoT 20,40,t_gen=17
+
+60,0.02142,180,71.4,1.0,2866.8974070370373,0,59.675556898117065
+Individual AoIs for Seed,60
+IoT 1,45,t_gen=5
+IoT 2,180,t_gen=20
+IoT 3,45,t_gen=5
+IoT 4,99,t_gen=4
+IoT 5,87,t_gen=18
+IoT 6,94,t_gen=9
+IoT 7,96,t_gen=7
+IoT 8,22,t_gen=8
+IoT 9,22,t_gen=8
+IoT 10,44,t_gen=6
+IoT 11,89,t_gen=16
+IoT 12,28,t_gen=12
+IoT 13,100,t_gen=3
+IoT 14,101,t_gen=2
+IoT 15,93,t_gen=10
+IoT 16,93,t_gen=12
+IoT 17,100,t_gen=5
+IoT 18,16,t_gen=14
+IoT 19,32,t_gen=18
+IoT 20,42,t_gen=8
+
+65,0.02016,111,67.2,1.0,2804.925517462867,0,43.17680835723877
+Individual AoIs for Seed,65
+IoT 1,85,t_gen=17
+IoT 2,36,t_gen=15
+IoT 3,99,t_gen=3
+IoT 4,107,t_gen=4
+IoT 5,107,t_gen=4
+IoT 6,82,t_gen=20
+IoT 7,22,t_gen=20
+IoT 8,41,t_gen=1
+IoT 9,101,t_gen=10
+IoT 10,34,t_gen=8
+IoT 11,109,t_gen=2
+IoT 12,111,t_gen=0
+IoT 13,93,t_gen=18
+IoT 14,19,t_gen=4
+IoT 15,101,t_gen=10
+IoT 16,31,t_gen=11
+IoT 17,91,t_gen=20
+IoT 18,19,t_gen=2
+IoT 19,37,t_gen=5
+IoT 20,19,t_gen=2
+
+85,0.0237,189,79.0,1.0,3311.974582800848,0,34.4504189491272
+Individual AoIs for Seed,85
+IoT 1,51,t_gen=17
+IoT 2,50,t_gen=18
+IoT 3,72,t_gen=13
+IoT 4,98,t_gen=2
+IoT 5,71,t_gen=14
+IoT 6,61,t_gen=7
+IoT 7,72,t_gen=13
+IoT 8,80,t_gen=5
+IoT 9,93,t_gen=16
+IoT 10,61,t_gen=7
+IoT 11,99,t_gen=10
+IoT 12,189,t_gen=1
+IoT 13,71,t_gen=5
+IoT 14,63,t_gen=5
+IoT 15,63,t_gen=5
+IoT 16,71,t_gen=14
+IoT 17,77,t_gen=8
+IoT 18,106,t_gen=20
+IoT 19,51,t_gen=17
+IoT 20,81,t_gen=4
+
+90,0.019979999999999998,138,66.6,1.0,2639.9897085614666,0,33.366371631622314
+Individual AoIs for Seed,90
+IoT 1,60,t_gen=8
+IoT 2,64,t_gen=4
+IoT 3,138,t_gen=12
+IoT 4,46,t_gen=4
+IoT 5,69,t_gen=1
+IoT 6,52,t_gen=16
+IoT 7,47,t_gen=3
+IoT 8,50,t_gen=0
+IoT 9,45,t_gen=5
+IoT 10,111,t_gen=17
+IoT 11,49,t_gen=2
+IoT 12,44,t_gen=10
+IoT 13,44,t_gen=19
+IoT 14,58,t_gen=10
+IoT 15,69,t_gen=18
+IoT 16,94,t_gen=1
+IoT 17,53,t_gen=15
+IoT 18,82,t_gen=5
+IoT 19,122,t_gen=6
+IoT 20,35,t_gen=15
+
+105,0.019815,126,66.05,1.0,2491.734233230385,0,28.690701723098755
+Individual AoIs for Seed,105
+IoT 1,48,t_gen=4
+IoT 2,45,t_gen=5
+IoT 3,76,t_gen=14
+IoT 4,93,t_gen=7
+IoT 5,29,t_gen=9
+IoT 6,122,t_gen=16
+IoT 7,28,t_gen=10
+IoT 8,87,t_gen=3
+IoT 9,45,t_gen=5
+IoT 10,126,t_gen=12
+IoT 11,120,t_gen=18
+IoT 12,71,t_gen=19
+IoT 13,74,t_gen=16
+IoT 14,25,t_gen=13
+IoT 15,72,t_gen=18
+IoT 16,35,t_gen=15
+IoT 17,29,t_gen=11
+IoT 18,90,t_gen=0
+IoT 19,81,t_gen=19
+IoT 20,25,t_gen=13
+
+49,0.02082,139,69.4,1.0,2701.7463551541,0,28.666680574417114
+Individual AoIs for Seed,49
+IoT 1,93,t_gen=20
+IoT 2,11,t_gen=19
+IoT 3,84,t_gen=0
+IoT 4,17,t_gen=13
+IoT 5,59,t_gen=11
+IoT 6,57,t_gen=19
+IoT 7,53,t_gen=17
+IoT 8,68,t_gen=2
+IoT 9,53,t_gen=17
+IoT 10,63,t_gen=7
+IoT 11,51,t_gen=19
+IoT 12,58,t_gen=12
+IoT 13,96,t_gen=17
+IoT 14,139,t_gen=0
+IoT 15,21,t_gen=9
+IoT 16,90,t_gen=11
+IoT 17,103,t_gen=10
+IoT 18,100,t_gen=13
+IoT 19,62,t_gen=8
+IoT 20,110,t_gen=3
+
+110,0.018510000000000002,164,61.7,1.0,2990.3663224669303,0,29.51331663131714
+Individual AoIs for Seed,110
+IoT 1,56,t_gen=1
+IoT 2,55,t_gen=2
+IoT 3,100,t_gen=16
+IoT 4,164,t_gen=7
+IoT 5,41,t_gen=16
+IoT 6,40,t_gen=17
+IoT 7,112,t_gen=4
+IoT 8,50,t_gen=7
+IoT 9,55,t_gen=2
+IoT 10,55,t_gen=5
+IoT 11,49,t_gen=8
+IoT 12,23,t_gen=8
+IoT 13,19,t_gen=12
+IoT 14,43,t_gen=14
+IoT 15,100,t_gen=16
+IoT 16,45,t_gen=12
+IoT 17,133,t_gen=10
+IoT 18,37,t_gen=2
+IoT 19,26,t_gen=5
+IoT 20,31,t_gen=0
+
+Final Averages
+avg_fitness,0.020836499999999997
+avg_peak_aoi,146.3
+avg_avg_aoi,69.455
+avg_coverage,1.0
+avg_total_dist,2793.2292186366435
+avg_unserved,0.0
+avg_runtime,44.942208647727966

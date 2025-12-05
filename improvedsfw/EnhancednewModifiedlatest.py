@@ -32,7 +32,7 @@ R_IOT = 10.0
 R_GBS = 30.0
 NUM_UAV = 3
 NUM_GBS = 4
-NUM_IOT = 50
+NUM_IOT = 20
 SEED = 42
 
 # SFW hyperparameters (tune to match GA/EIPGA budget)
@@ -569,40 +569,64 @@ def run_sfw(iot_objs, gb_objs, uav_list, pop=POP, max_iters=MAX_ITERS):
                     best_fitness = score
                     best_position = X[i].copy()
 
+        # Parameters (tune if desired)
+        PM1 = PM_LOW  # maximum mutation rate (used when f > favg)
+        PM2 = PM_HIGH  # minimum mutation rate (used inside cosine formula)
 
-
+        EPS = 1e-12
         # ----------------------------
         # AFGMS: Adaptive Fitness-Guided Mutation Strategy
         # ----------------------------
         # compute population stats
-        fmin = float(np.min(fitness))
+        fmin = float(np.min(fitness))  # best (lower-is-better)
         fmax = float(np.max(fitness))
         fmean = float(np.mean(fitness))
-        # decay factor for mutation magnitude (stronger earlier)
-        decay = (1.0 - (it / float(max_iters)))  # linear decay [1..0]
-        adapt_scale = SCALE0 * decay
+
+        # mutation scaling factor M (iteration-dependent)
+        M_scale = (1.0 - (it / float(max_iters))) ** 2
 
         for i in range(pop):
             fi = fitness[i]
-            # compute adaptive mutation probability pm
+
+            # adaptive mutation probability Pm (cosine-based as in your HLOA snippet)
             if fi <= fmean:
-                # normalized ratio: 0 (best) -> 1 (close to mean)
-                denom = (fmean - fmin) + EPS
-                ratio = max(0.0, min(1.0, (fi - fmin) / denom))
-                pm = PM_LOW + (PM_HIGH - PM_LOW) * (ratio ** GAMMA)
+                # guard against division by zero: use fmin as fbest
+                denom = (fmin - fmean)
+                # compute argument safely, map to [-1,1] before cos
+                # use (f_i - favg)/(fbest - favg) where fbest = fmin
+                if abs(denom) < EPS:
+                    cosine_arg = 0.0
+                else:
+                    cosine_arg = (fi - fmean) / (fmin - fmean)
+                    # clamp
+                    cosine_arg = max(-1.0, min(1.0, cosine_arg))
+                Pm = (PM1 + PM2) / 2.0 + (PM1 - PM2) / 2.0 * math.cos(cosine_arg * math.pi)
             else:
-                pm = PM_HIGH
-            # perform mutation with probability pm
-            if random.random() < pm:
-                # hybrid mutation: Gaussian + scaled Cauchy (heavy-tailed)
-                gaussian = np.random.randn(dim) * SIGMA_G
-                # Cauchy via standard_cauchy
-                cauchy = np.random.standard_cauchy(size=dim) * SIGMA_C
-                noise = adapt_scale * (gaussian + cauchy)
-                Xmut = X[i] + noise
+                Pm = PM1
+
+            # apply mutation with probability Pm
+            if random.random() < Pm:
+                # choose two distinct random indices r1, r2 (they can equal i, but ensure r1!=r2)
+                r1 = random.randrange(pop)
+                r2 = random.randrange(pop)
+                # ensure distinct
+                while r2 == r1:
+                    r2 = random.randrange(pop)
+
+                # Build candidate using best_position (continuous vector) and differential (r1-r2)
+                # If best_position is None (unlikely), skip
+                if best_position is None:
+                    continue
+
+                Xr1 = X[r1]
+                Xr2 = X[r2]
+                Xmut = best_position + M_scale * (Xr1 - Xr2)
+
+                # clamp to bounds
                 Xmut = np.maximum(Xmut, lb)
                 Xmut = np.minimum(Xmut, ub)
-                # evaluate and accept if better (greedy acceptance)
+
+                # evaluate and accept greedily if improved
                 score_mut, *_ = eval_cont_vector(Xmut)
                 if score_mut < fitness[i]:
                     X[i] = Xmut
@@ -829,7 +853,7 @@ def compute_final_stats(results):
 # Save to CSV
 def save_results_csv(results, final_stats, num_iot, num_uavs, num_gbs):
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"sfw_multi_seed_results_{timestamp}.csv"
+    filename = f"Enhancedresultsfw_multi_seed_results_{timestamp}.csv"
 
     with open(filename, "w", newline="") as f:
         writer = csv.writer(f)

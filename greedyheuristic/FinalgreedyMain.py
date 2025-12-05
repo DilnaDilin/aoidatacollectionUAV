@@ -14,12 +14,12 @@ import matplotlib.pyplot as plt
 # ----------------------------
 AREA_SIZE = 500  # map is AREA_SIZE x AREA_SIZE units
 UAV_SPEED = 10.0  # units per time slot
-T_MAX = 250  # max allowed time per UAV (time slots)
+T_MAX = 500  # max allowed time per UAV (time slots)
 R_IOT = 10.0  # IoT communication range (units)
 R_GBS = 30.0  # GBS communication range (units)
 NUM_UAV = 3
-NUM_GBS = 4
-NUM_IOT = 60  # change this variable to run experiments for 10,20,...
+NUM_GBS = 3
+NUM_IOT = 50  # change this variable to run experiments for 10,20,...
 SEED = 42
 
 
@@ -523,10 +523,12 @@ def run_multi_seed_experiment(
         elapsed = time.time() - t0
 
         # Evaluate performance
-        _, V_U_glob, per_uav_lengths, _, _ = evaluate_all_uavs(
+        #_, V_U_glob, per_uav_lengths, _, _ = evaluate_all_uavs(
+        #    uavs_res, iot_objs, gb_objs
+       # )
+        V_D_glob, V_U_glob, per_uav_lengths, per_uav_finish_times, feas_flags = evaluate_all_uavs(
             uavs_res, iot_objs, gb_objs
         )
-
         aoi_dict, peak, avg, coverage = compute_aoi_from_VU(V_U_glob, iot_objs)
 
         # --------------------------
@@ -538,6 +540,19 @@ def run_multi_seed_experiment(
             t_gen = next(i.t_gen for i in iot_objs if i.id == iid)
             t_gen_map[iid] = t_gen
             print(f" IoT {iid}: AoI = {aoi_dict[iid]} (t_gen={t_gen})")
+
+        # ---------------------------
+        # Print detailed UAV info
+        # ---------------------------
+        print("Per-UAV finish times:", per_uav_finish_times)
+        print("Per-UAV feasible:", feas_flags)
+        print(f"Peak AoI: {peak}, Avg AoI: {avg}, Coverage: {coverage:.3f}")
+
+        for u in uavs_res:
+            print(f"UAV{u.id} path:")
+            for typ, idx, pos in u.path:
+                print(f"  {typ:5s} {str(idx):>4s} @ ({pos[0]:.2f},{pos[1]:.2f})")
+            print("")
 
         # --------------------------
         # Plot network result

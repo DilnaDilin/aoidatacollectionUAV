@@ -24,12 +24,12 @@ import matplotlib.pyplot as plt
 # ----------------------------
 AREA_SIZE = 500  # map is AREA_SIZE x AREA_SIZE units
 UAV_SPEED = 10.0  # units per time slot
-T_MAX = 250  # max allowed time per UAV (time slots)
+T_MAX = 500  # max allowed time per UAV (time slots)
 R_IOT = 10.0  # IoT communication range (units)
 R_GBS = 30.0  # GBS communication range (units)
 NUM_UAV = 3
-NUM_GBS = 4
-NUM_IOT = 60  # number of IoT nodes (DCPs)
+NUM_GBS = 3
+NUM_IOT = 50 # number of IoT nodes (DCPs)
 SEED = 42
 
 # EIPGA hyperparameters
@@ -663,6 +663,35 @@ def run_multi_seed_experiment_eipga(seeds_list, num_iot=NUM_IOT, num_gbs=NUM_GBS
         )
         V_D_glob, V_U_glob, per_uav_lengths, per_uav_finish_times, feas_flags = evaluate_all_uavs(uav_copies, iot_objs, gb_objs)
         aoi_dict, peak, avg, coverage = compute_aoi_from_VU(V_U_glob, iot_objs)
+
+        # --------------------------
+        # Console print (requested)
+        # --------------------------
+        print("\nIndividual AoIs (None means not collected):")
+        t_gen_map = {}
+        for iid in sorted(aoi_dict.keys()):
+            t_gen = next(i.t_gen for i in iot_objs if i.id == iid)
+            t_gen_map[iid] = t_gen
+            print(f" IoT {iid}: AoI = {aoi_dict[iid]} (t_gen={t_gen})")
+
+        # ---------------------------
+        # Print detailed UAV info
+        # ---------------------------
+        print("Per-UAV finish times:", per_uav_finish_times)
+        print("Per-UAV feasible:", feas_flags)
+        print(f"Peak AoI: {peak}, Avg AoI: {avg}, Coverage: {coverage:.3f}")
+
+        for u in uav_copies:
+            print(f"UAV{u.id} path:")
+            for typ, idx, pos in u.path:
+                print(f"  {typ:5s} {str(idx):>4s} @ ({pos[0]:.2f},{pos[1]:.2f})")
+            print("")
+
+
+
+
+
+
 
         # Unserved IoTs
         served_iots = {iot_id for iot_id, v in V_U_glob.items() if v is not None}
