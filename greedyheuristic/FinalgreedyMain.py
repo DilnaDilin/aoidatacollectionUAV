@@ -12,14 +12,14 @@ import matplotlib.pyplot as plt
 # ----------------------------
 # Parameters (tweak as needed)
 # ----------------------------
-AREA_SIZE = 500  # map is AREA_SIZE x AREA_SIZE units
-UAV_SPEED = 10.0  # units per time slot
-T_MAX = 500  # max allowed time per UAV (time slots)
-R_IOT = 10.0  # IoT communication range (units)
-R_GBS = 30.0  # GBS communication range (units)
-NUM_UAV = 3
-NUM_GBS = 3
-NUM_IOT = 50  # change this variable to run experiments for 10,20,...
+AREA_SIZE = 500
+UAV_SPEED = 10.0
+T_MAX = 500
+R_IOT = 10.0
+R_GBS = 30.0
+NUM_UAV = 4
+NUM_GBS = 4
+NUM_IOT = 60
 SEED = 42
 
 
@@ -557,8 +557,7 @@ def run_multi_seed_experiment(
         # --------------------------
         # Plot network result
         # --------------------------
-        #plot_solution(iot_objs, gb_objs, uavs_res,
-                      #title=f"Greedy multi-UAV Solution | Seed {s}")
+        plot_solution(iot_objs, gb_objs, uavs_res, title=f"Heuristic path")
 
         # Metrics
         unserved = sum(1 for v in aoi_dict.values() if v is None)
@@ -653,7 +652,8 @@ def save_results_csv(results, final_stats, num_iot, num_uavs, num_gbs):
 # Run Experiment (MAIN)
 # --------------------------------------------
 if __name__ == "__main__":
-    seeds = [42,50,55,60,65,85,90,105,49,110]  # Edit if needed
+    #seeds = [42,50,55,60,65,85,90,105,49,110]  # Edit if needed
+    seeds = [42]
 
     print("\n===== Running Multi-Seed Experiment =====")
     results = run_multi_seed_experiment(seeds)

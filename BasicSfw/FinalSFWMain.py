@@ -30,9 +30,9 @@ UAV_SPEED = 10.0
 T_MAX = 500
 R_IOT = 10.0
 R_GBS = 30.0
-NUM_UAV = 3
-NUM_GBS = 3
-NUM_IOT = 50
+NUM_UAV = 4
+NUM_GBS = 4
+NUM_IOT = 60
 SEED = 42
 
 # SFW hyperparameters (tune to match GA/EIPGA budget)
@@ -555,6 +555,11 @@ def run_multi_seed_experiment_sfw(seeds_list, num_iot=NUM_IOT, num_gbs=NUM_GBS, 
         all_ids = set(iot.id for iot in iot_objs)
         not_served_ids = all_ids - served_iots
 
+        # ---------------------------
+        # Plot solution per seed
+        # ---------------------------
+        plot_solution(iot_objs, gb_objs, uav_copies, title=f"SFW path")
+
         print("Per-UAV finish times:", per_uav_finish_times)
         print("Per-UAV feasible:", feas_flags)
         print(f"Peak AoI: {peak}, Avg AoI: {avg}, Coverage: {coverage:.3f}")
@@ -639,7 +644,8 @@ def save_results_csv_sfw(results, final_stats, num_iot=NUM_IOT, num_uavs=NUM_UAV
 # Example usage
 # ----------------------------
 if __name__ == "__main__":
-    seeds = [42, 50, 55, 60, 65, 85, 90, 105, 49, 110]
+    #seeds = [42, 50, 55, 60, 65, 85, 90, 105, 49, 110]
+    seeds = [42]
 
     results = run_multi_seed_experiment_sfw(seeds)
     final_stats = compute_final_stats_sfw(results)

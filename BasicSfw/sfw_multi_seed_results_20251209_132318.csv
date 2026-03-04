@@ -1,0 +1,77 @@
+Scenario Information
+Number of IoT Nodes,60
+Number of UAVs,4
+Number of Ground BS,4
+
+Seed,Fitness,Peak AOI,Avg AOI,Coverage,Total Distance,Unserved IoT,Runtime (s)
+42,0.5484668891301527,196,128.7,1.0,6676.414239276808,0,55.72057008743286
+Individual AoIs for Seed,42
+IoT 1,188,t_gen=6
+IoT 2,47,t_gen=17
+IoT 3,182,t_gen=17
+IoT 4,56,t_gen=8
+IoT 5,7,t_gen=5
+IoT 6,51,t_gen=4
+IoT 7,196,t_gen=3
+IoT 8,97,t_gen=11
+IoT 9,77,t_gen=14
+IoT 10,79,t_gen=12
+IoT 11,169,t_gen=20
+IoT 12,181,t_gen=18
+IoT 13,187,t_gen=7
+IoT 14,192,t_gen=7
+IoT 15,175,t_gen=14
+IoT 16,44,t_gen=11
+IoT 17,71,t_gen=20
+IoT 18,47,t_gen=17
+IoT 19,6,t_gen=12
+IoT 20,182,t_gen=17
+IoT 21,63,t_gen=1
+IoT 22,184,t_gen=10
+IoT 23,181,t_gen=18
+IoT 24,107,t_gen=20
+IoT 25,179,t_gen=20
+IoT 26,48,t_gen=7
+IoT 27,79,t_gen=18
+IoT 28,53,t_gen=11
+IoT 29,75,t_gen=16
+IoT 30,105,t_gen=3
+IoT 31,186,t_gen=13
+IoT 32,108,t_gen=19
+IoT 33,172,t_gen=17
+IoT 34,146,t_gen=3
+IoT 35,83,t_gen=8
+IoT 36,180,t_gen=9
+IoT 37,56,t_gen=8
+IoT 38,173,t_gen=16
+IoT 39,190,t_gen=9
+IoT 40,183,t_gen=6
+IoT 41,182,t_gen=17
+IoT 42,91,t_gen=0
+IoT 43,52,t_gen=3
+IoT 44,82,t_gen=9
+IoT 45,176,t_gen=18
+IoT 46,183,t_gen=15
+IoT 47,74,t_gen=17
+IoT 48,117,t_gen=15
+IoT 49,173,t_gen=16
+IoT 50,183,t_gen=6
+IoT 51,193,t_gen=6
+IoT 52,169,t_gen=20
+IoT 53,185,t_gen=14
+IoT 54,179,t_gen=10
+IoT 55,46,t_gen=18
+IoT 56,169,t_gen=20
+IoT 57,188,t_gen=1
+IoT 58,132,t_gen=7
+IoT 59,182,t_gen=17
+IoT 60,181,t_gen=18
+
+Final Averages
+avg_fitness,0.5484668891301527
+avg_peak_aoi,196.0
+avg_avg_aoi,128.7
+avg_coverage,1.0
+avg_total_dist,6676.414239276808
+avg_unserved,0.0
+avg_runtime,55.72057008743286

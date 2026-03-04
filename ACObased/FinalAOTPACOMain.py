@@ -30,8 +30,8 @@ T_MAX = 500
 R_IOT = 10.0
 R_GBS = 30.0
 NUM_UAV = 3
-NUM_GBS = 3
-NUM_IOT = 50
+NUM_GBS = 4
+NUM_IOT = 60
 SEED = 42
 
 # ----------------------------
@@ -46,7 +46,7 @@ LAMBDA = 1.0    # ant deposit scalar
 ELITIST_BOOST = 6.0  # multiplier for best'-so-far reinforcement (set 0 to disable)
 NO_IMPROVE_LIMIT = 120
 TAU0 = 1.0      # initial pheromone
-SEED_WITH_GREEDY = False  # if True, seed pheromone from greedy
+SEED_WITH_GREEDY = True  # if True, seed pheromone from greedy
 GB_IMMEDIATE_INSERT_THRESHOLD = 2 * R_GBS  # threshold to insert GB immediately
 
 # Fitness weights (normalized)
@@ -654,7 +654,8 @@ def run_multi_seed_experiment_aco(seeds_list, num_iot=NUM_IOT, num_gbs=NUM_GBS, 
             print(f"\nNot served IoTs: {not_served_ids}, total: {len(not_served_ids)}")
 
             # Plot solution
-           # plot_solution(iot_objs, gb_objs, uav_copies, title=f"ACO multi-UAV result | Seed {s}")
+            #plot_solution(iot_objs, gb_objs, uav_copies, title=f"ACO multi-UAV result | Seed {s}")
+            plot_solution(iot_objs, gb_objs, uav_copies, title=f"AOTPACO Path")
 
             # Save results
             results.append({
@@ -742,7 +743,7 @@ def save_results_csv(results, final_stats, num_iot=NUM_IOT, num_uavs=NUM_UAV, nu
 # Example usage
 # ----------------------------
 if __name__ == "__main__":
-    seeds = [42, 50]  # modify as needed
+    seeds = [42]  # modify as needed
 
     results = run_multi_seed_experiment_aco(seeds)
     final_stats = compute_final_stats(results)

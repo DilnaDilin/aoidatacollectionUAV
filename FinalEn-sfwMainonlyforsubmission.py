@@ -555,7 +555,7 @@ def run_sfw(iot_objs, gb_objs, uav_list, pop=POP, max_iters=MAX_ITERS):
                 else:
                     if best_position is None:
                         continue
-                    XG = best_position * C_PARAM
+                    XG = best_position
                     Xnew[i] = XG + (best_position - X[i]) * p
             Xnew[i] = np.maximum(Xnew[i], lb)
             Xnew[i] = np.minimum(Xnew[i], ub)
@@ -594,16 +594,30 @@ def run_sfw(iot_objs, gb_objs, uav_list, pop=POP, max_iters=MAX_ITERS):
                 pm = PM_HIGH
             # perform mutation with probability pm
             if random.random() < pm:
-                # hybrid mutation: Gaussian + scaled Cauchy (heavy-tailed)
-                gaussian = np.random.randn(dim) * SIGMA_G
-                # Cauchy via standard_cauchy
-                cauchy = np.random.standard_cauchy(size=dim) * SIGMA_C
-                noise = adapt_scale * (gaussian + cauchy)
-                Xmut = X[i] + noise
-                Xmut = np.maximum(Xmut, lb)
-                Xmut = np.minimum(Xmut, ub)
+                # Trial vector as per paper
+                # ------------------------
+                # select two distinct individuals different from i
+                r1, r2 = random.sample([idx for idx in range(pop) if idx != i], 2)
+                X_trial = X[i] + adapt_scale * (X[r1] - X[r2])
+                # clip within bounds
+                X_trial = np.maximum(X_trial, lb)
+                X_trial = np.minimum(X_trial, ub)
+                Xmut=X_trial
+                # evaluate trial solution
+                score_mut, *_ = eval_cont_vector(X_trial)
+
+
+
+                ## hybrid mutation: Gaussian + scaled Cauchy (heavy-tailed)
+                #gaussian = np.random.randn(dim) * SIGMA_G
+                ## Cauchy via standard_cauchy
+                #cauchy = np.random.standard_cauchy(size=dim) * SIGMA_C
+                #noise = adapt_scale * (gaussian + cauchy)
+                #Xmut = X[i] + noise
+                #Xmut = np.maximum(Xmut, lb)
+                #Xmut = np.minimum(Xmut, ub)
                 # evaluate and accept if better (greedy acceptance)
-                score_mut, *_ = eval_cont_vector(Xmut)
+                #score_mut, *_ = eval_cont_vector(Xmut)
                 if score_mut < fitness[i]:
                     X[i] = Xmut
                     fitness[i] = score_mut
